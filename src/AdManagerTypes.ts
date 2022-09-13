@@ -49,6 +49,15 @@ export interface IAdManagerTargeting {
    * Correlator string to pass to ad loader.
    */
   correlator?: string;
+  /**
+   * Adrefresh
+  */
+  adsRefresh:string;
+   
+  /**
+   * APS library events
+ */
+  apsSlotId:string;
 }
 
 export interface IAdManagerTemplateImage {

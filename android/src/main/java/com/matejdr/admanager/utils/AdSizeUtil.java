@@ -20,7 +20,7 @@ public class AdSizeUtil {
                 return AdSize.FLUID;
             case "skyscraper":
                 return AdSize.WIDE_SKYSCRAPER;
-            case "leaderBoard":
+            case "leaderboard":
                 return AdSize.LEADERBOARD;
             case "mediumRectangle":
                 return AdSize.MEDIUM_RECTANGLE;

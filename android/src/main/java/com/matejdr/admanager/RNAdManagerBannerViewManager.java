@@ -34,6 +34,8 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     public static final String PROP_TEST_DEVICES = "testDevices";
     public static final String PROP_TARGETING = "targeting";
     public static final String PROP_CORRELATOR = "correlator";
+    public static final String PROP_APS_SLOT_ID = "apsSlotId";
+    public static final String PROP_ADS_REFRESH = "adsRefresh";
 
     public static final String EVENT_SIZE_CHANGE = "onSizeChange";
     public static final String EVENT_AD_LOADED = "onAdLoaded";
@@ -117,6 +119,16 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     @ReactProp(name = PROP_AD_UNIT_ID)
     public void setPropAdUnitID(final BannerAdView view, final String adUnitID) {
         view.setAdUnitID(adUnitID);
+    }
+
+    @ReactProp(name = PROP_ADS_REFRESH)
+    public void setPropAdsRefresh(final BannerAdView view , final String adsRefresh) {
+        view.setAdsRefresh(adsRefresh);
+    }
+
+    @ReactProp(name = PROP_APS_SLOT_ID)
+    public void setPropApsSlotId(final BannerAdView view , final String apsSlotId) {
+        view.setApsSlotId(apsSlotId);
     }
 
     @ReactProp(name = PROP_TEST_DEVICES)

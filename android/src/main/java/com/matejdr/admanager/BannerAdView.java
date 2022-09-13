@@ -4,9 +4,21 @@ import android.app.Activity;
 import android.content.Context;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
-
+import com.amazon.device.ads.AdError;
+import com.amazon.device.ads.AdRegistration;
+import com.amazon.device.ads.DTBAdCallback;
+import com.amazon.device.ads.DTBAdNetwork;
+import com.amazon.device.ads.DTBAdNetworkInfo;
+import com.amazon.device.ads.DTBAdRequest;
+import com.amazon.device.ads.DTBAdResponse;
+import com.amazon.device.ads.DTBAdSize;
+import com.amazon.device.ads.DTBAdUtil;
+import com.amazon.device.ads.MRAIDPolicy;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -28,6 +40,8 @@ import com.matejdr.admanager.utils.Targeting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 class BannerAdView extends ReactViewGroup implements AppEventListener, LifecycleEventListener {
     protected AdManagerAdView adManagerAdView;
@@ -35,7 +49,10 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     String[] testDevices;
     AdSize[] validAdSizes;
     String adUnitID;
+    String apsSlotId;
     AdSize adSize;
+    String adsRefresh;
+    int adsCount = 0;
 
     // Targeting
     Boolean hasTargeting = false;
@@ -111,7 +128,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 gadSize.putDouble("width", adManagerAdView.getAdSize().getWidth());
                 gadSize.putDouble("height", adManagerAdView.getAdSize().getHeight());
                 ad.putMap("gadSize", gadSize);
-
+                adsCount = adsCount+1;
                 ad.putString("isFluid", String.valueOf(isFluid()));
 
                 WritableMap measurements = Arguments.createMap();
@@ -185,9 +202,11 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
             getId(),
             name,
             event);
+            Log.d("Ascendeum", "sendEvent: "+name);
     }
 
     public void loadBanner() {
+        Log.d("Ascendeum", "loadBanner");
         ArrayList<AdSize> adSizes = new ArrayList<AdSize>();
         if (this.adSize != null) {
             adSizes.add(this.adSize);
@@ -206,9 +225,109 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
 
         AdSize[] adSizesArray = adSizes.toArray(new AdSize[adSizes.size()]);
         this.adManagerAdView.setAdSizes(adSizesArray);
+        makeInternalAdsRequest(adSizesArray);
 
-        AdManagerAdRequest.Builder adRequestBuilder = new AdManagerAdRequest.Builder();
+        // AdManagerAdRequest.Builder adRequestBuilder = new AdManagerAdRequest.Builder();
 
+        // List<String> testDevicesList = new ArrayList<>();
+        // if (testDevices != null) {
+        //     for (int i = 0; i < testDevices.length; i++) {
+        //         String testDevice = testDevices[i];
+        //         if (testDevice == "SIMULATOR") {
+        //             testDevice = AdManagerAdRequest.DEVICE_ID_EMULATOR;
+        //         }
+        //         testDevicesList.add(testDevice);
+        //     }
+        //     RequestConfiguration requestConfiguration
+        //         = new RequestConfiguration.Builder()
+        //         .setTestDeviceIds(testDevicesList)
+        //         .build();
+        //     MobileAds.setRequestConfiguration(requestConfiguration);
+        // }
+
+        // if (correlator == null) {
+        //     correlator = (String) Targeting.getCorelator(adUnitID);
+        // }
+        // Bundle bundle = new Bundle();
+        // bundle.putString("correlator", correlator);
+
+        // adRequestBuilder.addNetworkExtrasBundle(AdMobAdapter.class, bundle);
+
+
+        // // Targeting
+        // if (hasTargeting) {
+        //     if (customTargeting != null && customTargeting.length > 0) {
+        //         for (int i = 0; i < customTargeting.length; i++) {
+        //             String key = customTargeting[i].key;
+        //             if (!key.isEmpty()) {
+        //                 if (customTargeting[i].value != null && !customTargeting[i].value.isEmpty()) {
+        //                     adRequestBuilder.addCustomTargeting(key, customTargeting[i].value);
+        //                 } else if (customTargeting[i].values != null && !customTargeting[i].values.isEmpty()) {
+        //                     adRequestBuilder.addCustomTargeting(key, customTargeting[i].values);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     if (categoryExclusions != null && categoryExclusions.length > 0) {
+        //         for (int i = 0; i < categoryExclusions.length; i++) {
+        //             String categoryExclusion = categoryExclusions[i];
+        //             if (!categoryExclusion.isEmpty()) {
+        //                 adRequestBuilder.addCategoryExclusion(categoryExclusion);
+        //             }
+        //         }
+        //     }
+        //     if (keywords != null && keywords.length > 0) {
+        //         for (int i = 0; i < keywords.length; i++) {
+        //             String keyword = keywords[i];
+        //             if (!keyword.isEmpty()) {
+        //                 adRequestBuilder.addKeyword(keyword);
+        //             }
+        //         }
+        //     }
+        //     if (contentURL != null) {
+        //         adRequestBuilder.setContentUrl(contentURL);
+        //     }
+        //     if (publisherProvidedID != null) {
+        //         adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
+        //     }
+        //     if (location != null) {
+        //         adRequestBuilder.setLocation(location);
+        //     }
+        // }
+
+        // AdManagerAdRequest adRequest = adRequestBuilder.build();
+        // this.adManagerAdView.loadAd(adRequest);
+    }
+
+    private void makeInternalAdsRequest(AdSize[] adSizesArray){
+        Log.d("Ascendeum", "makeInternalAdsRequest: "+adSizesArray);
+        final DTBAdRequest loader = new DTBAdRequest();
+        loader.setSizes(new DTBAdSize(adSizesArray[0].getWidth(), adSizesArray[0].getHeight(), this.apsSlotId));
+        if(this.adsRefresh.equals("1")){
+            loader.setAutoRefresh(30);
+        }
+        loader.loadAd(new DTBAdCallback() {
+            @Override
+            public void onFailure(AdError adError) {
+                Log.d("Ascendeum", "APS:Oops banner ad load has failed: " + adError.getMessage());
+                requestBannerAds(null,adSizesArray);
+            }
+            @Override
+            public void onSuccess(DTBAdResponse dtbAdResponse) {
+                Log.d("Ascendeum", "APS:dtbAdResponse: " + dtbAdResponse);
+                requestBannerAds(dtbAdResponse,adSizesArray);
+            }
+        });
+    }
+
+    private void requestBannerAds(DTBAdResponse dtbAdResponse,AdSize[] adSizesArray){
+        Log.d("Ascendeum", "requestBannerAds after auctions : "+adSizesArray);
+        AdManagerAdRequest.Builder adRequestBuilder =  null;
+        if(dtbAdResponse != null){
+            adRequestBuilder = DTBAdUtil.INSTANCE.createAdManagerAdRequestBuilder(dtbAdResponse);
+        }else {
+            adRequestBuilder = new AdManagerAdRequest.Builder();
+        }
         List<String> testDevicesList = new ArrayList<>();
         if (testDevices != null) {
             for (int i = 0; i < testDevices.length; i++) {
@@ -233,10 +352,10 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
 
         adRequestBuilder.addNetworkExtrasBundle(AdMobAdapter.class, bundle);
 
-
         // Targeting
         if (hasTargeting) {
             if (customTargeting != null && customTargeting.length > 0) {
+                adRequestBuilder.addCustomTargeting("refreshIteration",String.valueOf(adsCount));
                 for (int i = 0; i < customTargeting.length; i++) {
                     String key = customTargeting[i].key;
                     if (!key.isEmpty()) {
@@ -274,9 +393,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 adRequestBuilder.setLocation(location);
             }
         }
-
-        AdManagerAdRequest adRequest = adRequestBuilder.build();
-        this.adManagerAdView.loadAd(adRequest);
+        this.adManagerAdView.loadAd(adRequestBuilder.build());
     }
 
     public void setAdUnitID(String adUnitID) {
@@ -287,6 +404,14 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         }
         this.adUnitID = adUnitID;
         this.adManagerAdView.setAdUnitId(adUnitID);
+    }
+
+    public void setAdsRefresh(String adsRefresh){
+        this.adsRefresh = adsRefresh;
+    }
+
+    public void setApsSlotId(String apsSlotId){
+        this.apsSlotId = apsSlotId;
     }
 
     public void setTestDevices(String[] testDevices) {
