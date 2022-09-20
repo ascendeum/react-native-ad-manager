@@ -9,16 +9,23 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+
+import com.adsbynimbus.request.NimbusResponse;
 import com.amazon.device.ads.AdError;
-import com.amazon.device.ads.AdRegistration;
 import com.amazon.device.ads.DTBAdCallback;
-import com.amazon.device.ads.DTBAdNetwork;
-import com.amazon.device.ads.DTBAdNetworkInfo;
 import com.amazon.device.ads.DTBAdRequest;
 import com.amazon.device.ads.DTBAdResponse;
 import com.amazon.device.ads.DTBAdSize;
 import com.amazon.device.ads.DTBAdUtil;
-import com.amazon.device.ads.MRAIDPolicy;
+import com.adsbynimbus.NimbusAdManager;
+import com.adsbynimbus.NimbusError;
+import com.adsbynimbus.lineitem.GoogleDynamicPrice;
+import com.adsbynimbus.lineitem.LinearPriceGranularity;
+import com.adsbynimbus.lineitem.LinearPriceMapping;
+import com.adsbynimbus.openrtb.enumerations.Position;
+import com.adsbynimbus.openrtb.request.Format;
+import com.adsbynimbus.request.NimbusRequest;
+import com.adsbynimbus.request.RequestManager;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -37,11 +44,8 @@ import com.google.android.gms.ads.admanager.AdManagerAdView;
 import com.google.android.gms.ads.admanager.AppEventListener;
 import com.matejdr.admanager.customClasses.CustomTargeting;
 import com.matejdr.admanager.utils.Targeting;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 class BannerAdView extends ReactViewGroup implements AppEventListener, LifecycleEventListener {
     protected AdManagerAdView adManagerAdView;
@@ -50,9 +54,12 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     AdSize[] validAdSizes;
     String adUnitID;
     String apsSlotId;
+    Boolean adsNimbus = true;
     AdSize adSize;
     String adsRefresh;
     int adsCount = 0;
+    private NimbusResponse nimbusAdResponse = null;
+    private DTBAdResponse apsAdResponse = null;
 
     // Targeting
     Boolean hasTargeting = false;
@@ -63,6 +70,14 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     String publisherProvidedID;
     Location location;
     String correlator;
+    String TAG = "ascAds";
+    AdSize[] ascAdSizesArray;
+    Handler mAdHandler = new Handler();
+    Handler mDelayHandler = new Handler();
+    Runnable adsRequestRunnable;
+    Runnable hbRunnable;
+    long adsRefreshInterval = 30000;
+    Boolean bannerAdsOn = true;
 
     int top;
     int left;
@@ -73,6 +88,24 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         super(context);
         currentActivityContext = applicationContext.getCurrentActivity();
         applicationContext.addLifecycleEventListener(this);
+        Log.d(TAG, "BannerAdView");
+        if(adsRequestRunnable == null){
+            adsRequestRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "adsRequestRunnable: ");
+                    requestAds();
+                }
+            };
+        }
+        if(hbRunnable == null){
+            hbRunnable =  new Runnable() {
+                @Override
+                public void run() {
+                    finishHeaderBidding();
+                }
+            };
+        }
         this.createAdView();
     }
 
@@ -87,9 +120,11 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     }
 
     private void createAdView() {
-        if (this.adManagerAdView != null) this.adManagerAdView.destroy();
-        if (this.currentActivityContext == null) return;
-
+        Log.d(TAG, "createAdView");
+        if(this.adManagerAdView != null) this.adManagerAdView.destroy();
+        if(nimbusAdResponse != null) { nimbusAdResponse = null;}
+        if(apsAdResponse != null) {apsAdResponse = null;}
+        if(this.currentActivityContext == null) return;
         this.adManagerAdView = new AdManagerAdView(currentActivityContext);
 
         if (isFluid()) {
@@ -141,6 +176,12 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 ad.putMap("measurements", measurements);
 
                 sendEvent(RNAdManagerBannerViewManager.EVENT_AD_LOADED, ad);
+                // re load the ads request after ads refresh
+                Log.d(TAG, "ads loaded after ad received : " + adsRefresh);
+                if(adsRefresh.equals("1")){
+                    Log.d(TAG, "re request Ads ");
+                    mAdHandler.postDelayed(adsRequestRunnable,adsRefreshInterval);
+                }
             }
 
             @Override
@@ -202,11 +243,11 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
             getId(),
             name,
             event);
-            Log.d("Ascendeum", "sendEvent: "+name);
+            Log.d(TAG, "sendEvent: "+name);
     }
 
     public void loadBanner() {
-        Log.d("Ascendeum", "loadBanner");
+        Log.d(TAG, "loadBanner");
         ArrayList<AdSize> adSizes = new ArrayList<AdSize>();
         if (this.adSize != null) {
             adSizes.add(this.adSize);
@@ -223,9 +264,11 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
             adSizes.add(AdSize.BANNER);
         }
 
-        AdSize[] adSizesArray = adSizes.toArray(new AdSize[adSizes.size()]);
-        this.adManagerAdView.setAdSizes(adSizesArray);
-        makeInternalAdsRequest(adSizesArray);
+        ascAdSizesArray = adSizes.toArray(new AdSize[adSizes.size()]);
+        this.adManagerAdView.setAdSizes(ascAdSizesArray);
+
+        requestAds();
+
 
         // AdManagerAdRequest.Builder adRequestBuilder = new AdManagerAdRequest.Builder();
 
@@ -299,35 +342,74 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         // this.adManagerAdView.loadAd(adRequest);
     }
 
-    private void makeInternalAdsRequest(AdSize[] adSizesArray){
-        Log.d("Ascendeum", "makeInternalAdsRequest: "+adSizesArray);
-        final DTBAdRequest loader = new DTBAdRequest();
-        loader.setSizes(new DTBAdSize(adSizesArray[0].getWidth(), adSizesArray[0].getHeight(), this.apsSlotId));
-        if(this.adsRefresh.equals("1")){
-            loader.setAutoRefresh(30);
+    private void requestAds() {
+        if (!bannerAdsOn) return;
+        if(nimbusAdResponse != null){
+            nimbusAdResponse = null;
         }
-        loader.loadAd(new DTBAdCallback() {
-            @Override
-            public void onFailure(AdError adError) {
-                Log.d("Ascendeum", "APS:Oops banner ad load has failed: " + adError.getMessage());
-                requestBannerAds(null,adSizesArray);
-            }
-            @Override
-            public void onSuccess(DTBAdResponse dtbAdResponse) {
-                Log.d("Ascendeum", "APS:dtbAdResponse: " + dtbAdResponse);
-                requestBannerAds(dtbAdResponse,adSizesArray);
-            }
-        });
+        if(apsAdResponse != null){
+            apsAdResponse = null;
+        }
+
+        Log.d(TAG, "requestAds: " + ascAdSizesArray);
+        if(this.adsNimbus){
+            // Create an instance of the NimbusAdManager class
+            NimbusAdManager nimbusAdManager = new NimbusAdManager();
+            NimbusRequest nimbusRequest = NimbusRequest.forBannerAd(this.adUnitID, Format.LETTERBOX, Position.HEADER);
+            // Make the request to Nimbus and apply Dynamic Price
+            nimbusAdManager.makeRequest(currentActivityContext,nimbusRequest, new RequestManager.Listener(){
+                @Override
+                public void onAdResponse(NimbusResponse nimbusResponse){
+                    nimbusAdResponse = nimbusResponse;
+                    Log.d(TAG, "nimbus success");
+                }
+                @Override
+                public void onError(NimbusError error) {
+                    nimbusAdResponse = null;
+                    Log.d(TAG, "nimbus failed");
+                }
+            });
+        }
+        if(this.apsSlotId != null) {
+            DTBAdRequest loader = new DTBAdRequest();
+            loader.setSizes(new DTBAdSize(ascAdSizesArray[0].getWidth(), ascAdSizesArray[0].getHeight(), this.apsSlotId));
+            loader.loadAd(new DTBAdCallback() {
+                @Override
+                public void onFailure(AdError adError) {
+                    apsAdResponse =  null;
+                    Log.d(TAG, "aps failed");
+                    // delay with 500ms finish header bidding
+                    mDelayHandler.postDelayed(hbRunnable,500);
+                }
+                @Override
+                public void onSuccess(DTBAdResponse dtbAdResponse) {
+                    Log.d(TAG, "aps success");
+                    apsAdResponse = dtbAdResponse;
+                    // delay with 500ms finish header bidding
+                    mDelayHandler.postDelayed(hbRunnable,500);
+                }
+            });
+        }else{
+            // call finish header bidding without aps
+            mDelayHandler.postDelayed(hbRunnable,500);
+        }
     }
 
-    private void requestBannerAds(DTBAdResponse dtbAdResponse,AdSize[] adSizesArray){
-        Log.d("Ascendeum", "requestBannerAds after auctions : "+adSizesArray);
+    private void finishHeaderBidding(){
+        Log.d(TAG, "finishHeaderBidding");
         AdManagerAdRequest.Builder adRequestBuilder =  null;
-        if(dtbAdResponse != null){
-            adRequestBuilder = DTBAdUtil.INSTANCE.createAdManagerAdRequestBuilder(dtbAdResponse);
+
+        if(apsAdResponse != null){
+            adRequestBuilder = DTBAdUtil.INSTANCE.createAdManagerAdRequestBuilder(apsAdResponse);
         }else {
             adRequestBuilder = new AdManagerAdRequest.Builder();
         }
+        if(nimbusAdResponse != null){
+            LinearPriceMapping priceMapping = new LinearPriceMapping(new LinearPriceGranularity(0,2000,1));
+            GoogleDynamicPrice.applyDynamicPrice(nimbusAdResponse,adRequestBuilder,priceMapping);
+            nimbusAdResponse = null;
+        }
+
         List<String> testDevicesList = new ArrayList<>();
         if (testDevices != null) {
             for (int i = 0; i < testDevices.length; i++) {
@@ -355,7 +437,9 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         // Targeting
         if (hasTargeting) {
             if (customTargeting != null && customTargeting.length > 0) {
-                adRequestBuilder.addCustomTargeting("refreshIteration",String.valueOf(adsCount));
+                if(adsRefresh.equals("1")){
+                    adRequestBuilder.addCustomTargeting("refreshIteration",String.valueOf(adsCount));
+                }
                 for (int i = 0; i < customTargeting.length; i++) {
                     String key = customTargeting[i].key;
                     if (!key.isEmpty()) {
@@ -393,10 +477,12 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 adRequestBuilder.setLocation(location);
             }
         }
+        Log.d(TAG, "CustomTargeting : "+adRequestBuilder.build().getCustomTargeting());
         this.adManagerAdView.loadAd(adRequestBuilder.build());
     }
 
     public void setAdUnitID(String adUnitID) {
+        Log.d(TAG, "setAdUnitID: " + adUnitID);
         if (this.adUnitID != null) {
             // We can only set adUnitID once, so when it was previously set we have
             // to recreate the view
@@ -411,7 +497,12 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     }
 
     public void setApsSlotId(String apsSlotId){
+        Log.d(TAG, "setApsSlotId: " + apsSlotId);
         this.apsSlotId = apsSlotId;
+    }
+
+    public void setAdsNimbus(Boolean adsNimbus){
+        this.adsNimbus = adsNimbus;
     }
 
     public void setTestDevices(String[] testDevices) {
@@ -444,6 +535,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     }
 
     public void setAdSize(AdSize adSize) {
+        Log.d(TAG, "setAdSize: " + adSize);
         this.adSize = adSize;
     }
 
@@ -465,6 +557,11 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
 
     @Override
     public void onHostResume() {
+        Log.d(TAG, "onHostResume ");
+        if (!bannerAdsOn) {
+            bannerAdsOn = true;
+            requestAds();
+        }
         if (this.adManagerAdView != null) {
             this.adManagerAdView.resume();
         }
@@ -472,17 +569,38 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
 
     @Override
     public void onHostPause() {
+        Log.d(TAG, "onHostPause ");
         if (this.adManagerAdView != null) {
             this.adManagerAdView.pause();
+        }
+        bannerAdsOn = false;
+        if(adsRequestRunnable != null){
+            mAdHandler.removeCallbacks(adsRequestRunnable);
+        }
+        if(hbRunnable != null) {
+            mDelayHandler.removeCallbacks(hbRunnable);
         }
     }
 
     @Override
     public void onHostDestroy() {
+        Log.d(TAG, "onHostDestroy ");
+        if(adsRequestRunnable != null){
+            mAdHandler.removeCallbacks(adsRequestRunnable);
+            adsRequestRunnable = null;
+        }
+        if(hbRunnable != null) {
+            mDelayHandler.removeCallbacks(hbRunnable);
+            hbRunnable = null;
+        }
+        mAdHandler = null;
+        mDelayHandler = null;
         if (this.adManagerAdView != null) {
             this.currentActivityContext = null;
             this.adManagerAdView.destroy();
         }
+        if(nimbusAdResponse != null) { nimbusAdResponse = null;}
+        if(apsAdResponse != null) {apsAdResponse = null;}
     }
 
     private class MeasureAndLayoutRunnable implements Runnable {

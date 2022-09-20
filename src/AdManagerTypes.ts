@@ -58,6 +58,12 @@ export interface IAdManagerTargeting {
    * APS library events
  */
   apsSlotId:string;
+
+    /**
+   * adsNimbus - Enable/Disable
+  */
+
+     adsNimbus?: Boolean;
 }
 
 export interface IAdManagerTemplateImage {

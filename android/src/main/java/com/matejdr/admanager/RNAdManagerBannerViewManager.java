@@ -36,6 +36,7 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     public static final String PROP_CORRELATOR = "correlator";
     public static final String PROP_APS_SLOT_ID = "apsSlotId";
     public static final String PROP_ADS_REFRESH = "adsRefresh";
+    public static final String PROP_ADS_NIMBUS = "adsNimbus";
 
     public static final String EVENT_SIZE_CHANGE = "onSizeChange";
     public static final String EVENT_AD_LOADED = "onAdLoaded";
@@ -129,6 +130,11 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     @ReactProp(name = PROP_APS_SLOT_ID)
     public void setPropApsSlotId(final BannerAdView view , final String apsSlotId) {
         view.setApsSlotId(apsSlotId);
+    }
+
+    @ReactProp(name = PROP_ADS_NIMBUS)
+    public void setPropAdsNimbus(final BannerAdView view , final Boolean adsNimbus) {
+        view.setAdsNimbus(adsNimbus);
     }
 
     @ReactProp(name = PROP_TEST_DEVICES)

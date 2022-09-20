@@ -50,6 +50,22 @@ interface IAdManagerBannerPropsBase extends ViewProps {
   testDevices?: string[];
 
   targeting?: IAdManagerTargeting;
+
+  /**
+   * adsNimbus - Enable/Disable
+  */
+
+  adsNimbus?: Boolean;
+
+  /**
+   * Adrefresh
+  */
+     adsRefresh:string;
+   
+    /**
+      * APS library events
+    */
+     apsSlotId:string;
 }
 
 interface IAdManagerBannerProps extends IAdManagerBannerPropsBase {
