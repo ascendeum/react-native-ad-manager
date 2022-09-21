@@ -11,7 +11,6 @@
 @property (nonatomic, strong) NSString *adUnitID;
 @property (nonatomic, strong) NSString *apsSlotId;
 @property (nonatomic, copy) NSString *correlator;
-@property (nonatomic) NSString *adsRefresh;
 
 @property (nonatomic, copy) RCTBubblingEventBlock onSizeChange;
 @property (nonatomic, copy) RCTBubblingEventBlock onAppEvent;

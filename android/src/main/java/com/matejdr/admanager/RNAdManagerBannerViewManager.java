@@ -37,6 +37,7 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     public static final String PROP_APS_SLOT_ID = "apsSlotId";
     public static final String PROP_ADS_REFRESH = "adsRefresh";
     public static final String PROP_ADS_NIMBUS = "adsNimbus";
+    public static final String PROP_REFRESH_INTERVAL = "refreshInterval";
 
     public static final String EVENT_SIZE_CHANGE = "onSizeChange";
     public static final String EVENT_AD_LOADED = "onAdLoaded";
@@ -123,7 +124,7 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     }
 
     @ReactProp(name = PROP_ADS_REFRESH)
-    public void setPropAdsRefresh(final BannerAdView view , final String adsRefresh) {
+    public void setPropAdsRefresh(final BannerAdView view , final Boolean adsRefresh) {
         view.setAdsRefresh(adsRefresh);
     }
 
@@ -135,6 +136,11 @@ public class RNAdManagerBannerViewManager extends ViewGroupManager<BannerAdView>
     @ReactProp(name = PROP_ADS_NIMBUS)
     public void setPropAdsNimbus(final BannerAdView view , final Boolean adsNimbus) {
         view.setAdsNimbus(adsNimbus);
+    }
+
+    @ReactProp(name = PROP_REFRESH_INTERVAL)
+    public void setPropRefreshInterval(final BannerAdView view , final Number refreshInterval) {
+        view.setRefreshInterval(refreshInterval);
     }
 
     @ReactProp(name = PROP_TEST_DEVICES)

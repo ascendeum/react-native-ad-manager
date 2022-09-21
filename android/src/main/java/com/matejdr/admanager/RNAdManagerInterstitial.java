@@ -196,9 +196,9 @@ public class RNAdManagerInterstitial extends ReactContextBaseJavaModule {
         if (publisherProvidedID != null) {
             adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
         }
-        if (location != null) {
-            adRequestBuilder.setLocation(location);
-        }
+        // if (location != null) {
+        //     adRequestBuilder.setLocation(location);
+        // }
 
         adRequest = adRequestBuilder.build();
 

@@ -1,7 +1,7 @@
 {
   "name": "@ascendeum_ads/rn-gam-aps-nimbus",
   "title": "React Native Google Ad Manager With APS-Nimbus",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A react-native component for Google Ad Manager banners, interstitials and native ads.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",

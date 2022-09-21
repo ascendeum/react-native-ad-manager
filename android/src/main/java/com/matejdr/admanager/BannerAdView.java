@@ -56,7 +56,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     String apsSlotId;
     Boolean adsNimbus = true;
     AdSize adSize;
-    String adsRefresh;
+    Boolean adsRefresh = true;
     int adsCount = 0;
     private NimbusResponse nimbusAdResponse = null;
     private DTBAdResponse apsAdResponse = null;
@@ -178,7 +178,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 sendEvent(RNAdManagerBannerViewManager.EVENT_AD_LOADED, ad);
                 // re load the ads request after ads refresh
                 Log.d(TAG, "ads loaded after ad received : " + adsRefresh);
-                if(adsRefresh.equals("1")){
+                if(this.adsRefresh){
                     Log.d(TAG, "re request Ads ");
                     mAdHandler.postDelayed(adsRequestRunnable,adsRefreshInterval);
                 }
@@ -379,19 +379,19 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                     apsAdResponse =  null;
                     Log.d(TAG, "aps failed");
                     // delay with 500ms finish header bidding
-                    mDelayHandler.postDelayed(hbRunnable,500);
+                    mDelayHandler.postDelayed(hbRunnable,750);
                 }
                 @Override
                 public void onSuccess(DTBAdResponse dtbAdResponse) {
                     Log.d(TAG, "aps success");
                     apsAdResponse = dtbAdResponse;
                     // delay with 500ms finish header bidding
-                    mDelayHandler.postDelayed(hbRunnable,500);
+                    mDelayHandler.postDelayed(hbRunnable,750);
                 }
             });
         }else{
             // call finish header bidding without aps
-            mDelayHandler.postDelayed(hbRunnable,500);
+            mDelayHandler.postDelayed(hbRunnable,750);
         }
     }
 
@@ -437,7 +437,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         // Targeting
         if (hasTargeting) {
             if (customTargeting != null && customTargeting.length > 0) {
-                if(adsRefresh.equals("1")){
+                if(this.adsRefresh){
                     adRequestBuilder.addCustomTargeting("refreshIteration",String.valueOf(adsCount));
                 }
                 for (int i = 0; i < customTargeting.length; i++) {
@@ -473,9 +473,9 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
             if (publisherProvidedID != null) {
                 adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
             }
-            if (location != null) {
-                adRequestBuilder.setLocation(location);
-            }
+            // if (location != null) {
+            //     adRequestBuilder.setLocation(location);
+            // }
         }
         Log.d(TAG, "CustomTargeting : "+adRequestBuilder.build().getCustomTargeting());
         this.adManagerAdView.loadAd(adRequestBuilder.build());
@@ -492,7 +492,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         this.adManagerAdView.setAdUnitId(adUnitID);
     }
 
-    public void setAdsRefresh(String adsRefresh){
+    public void setAdsRefresh(Boolean adsRefresh){
         this.adsRefresh = adsRefresh;
     }
 
@@ -503,6 +503,10 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
 
     public void setAdsNimbus(Boolean adsNimbus){
         this.adsNimbus = adsNimbus;
+    }
+
+    public void setRefreshInterval(Number interval){
+        Log.d(TAG, "setRefreshInterval: " + interval);
     }
 
     public void setTestDevices(String[] testDevices) {

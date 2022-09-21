@@ -49,21 +49,27 @@ export interface IAdManagerTargeting {
    * Correlator string to pass to ad loader.
    */
   correlator?: string;
+
   /**
    * Adrefresh
   */
-  adsRefresh:string;
+  adsRefresh?:Boolean;
    
   /**
    * APS library events
- */
+  */
   apsSlotId:string;
 
-    /**
+  /**
    * adsNimbus - Enable/Disable
   */
+  adsNimbus?: Boolean;
 
-     adsNimbus?: Boolean;
+  /**
+   * Adrefresh interval
+  */
+  refreshInterval?:Number;
+  
 }
 
 export interface IAdManagerTemplateImage {

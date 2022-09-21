@@ -239,9 +239,9 @@ class AdaptiveBannerAdView extends ReactViewGroup implements AppEventListener, L
             if (publisherProvidedID != null) {
                 adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
             }
-            if (location != null) {
-                adRequestBuilder.setLocation(location);
-            }
+            // if (location != null) {
+            //     adRequestBuilder.setLocation(location);
+            // }
         }
 
         AdManagerAdRequest adRequest = adRequestBuilder.build();
