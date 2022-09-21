@@ -178,7 +178,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
                 sendEvent(RNAdManagerBannerViewManager.EVENT_AD_LOADED, ad);
                 // re load the ads request after ads refresh
                 Log.d(TAG, "ads loaded after ad received : " + adsRefresh);
-                if(this.adsRefresh){
+                if(adsRefresh){
                     Log.d(TAG, "re request Ads ");
                     mAdHandler.postDelayed(adsRequestRunnable,adsRefreshInterval);
                 }
@@ -343,7 +343,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     }
 
     private void requestAds() {
-        if (!bannerAdsOn) return;
+        if(!bannerAdsOn || this.currentActivityContext == null) return;
         if(nimbusAdResponse != null){
             nimbusAdResponse = null;
         }
@@ -505,9 +505,9 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         this.adsNimbus = adsNimbus;
     }
 
-    public void setRefreshInterval(Number interval){
-        Log.d(TAG, "setRefreshInterval: " + interval);
-    }
+//    public void setRefreshInterval(long interval){
+//        Log.d(TAG, "setRefreshInterval: " + interval);
+//    }
 
     public void setTestDevices(String[] testDevices) {
         this.testDevices = testDevices;
@@ -563,6 +563,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
     public void onHostResume() {
         Log.d(TAG, "onHostResume ");
         if (!bannerAdsOn) {
+            Log.d(TAG, "onHostResume - x");
             bannerAdsOn = true;
             requestAds();
         }
@@ -599,6 +600,7 @@ class BannerAdView extends ReactViewGroup implements AppEventListener, Lifecycle
         }
         mAdHandler = null;
         mDelayHandler = null;
+        bannerAdsOn = true;
         if (this.adManagerAdView != null) {
             this.currentActivityContext = null;
             this.adManagerAdView.destroy();

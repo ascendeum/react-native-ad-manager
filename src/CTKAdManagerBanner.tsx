@@ -61,12 +61,6 @@ interface IAdManagerBannerPropsBase extends ViewProps {
    * Adrefresh
   */
    adsRefresh?:Boolean;
-
-  /**
-   * Adrefresh interval
-  */
- 
-   refreshInterval?:Number;
    
     /**
       * APS library events

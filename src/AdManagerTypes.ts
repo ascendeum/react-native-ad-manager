@@ -64,11 +64,6 @@ export interface IAdManagerTargeting {
    * adsNimbus - Enable/Disable
   */
   adsNimbus?: Boolean;
-
-  /**
-   * Adrefresh interval
-  */
-  refreshInterval?:Number;
   
 }
 
